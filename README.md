@@ -36,7 +36,7 @@ Nedan följer hur man kan använda sig av APIet:
   <tr>
     <td>DELETE</td>
     <td>/movies/id</td>
-    <td>Ta bort film med specifikt id</td>
+    <td>Ta bort film med specifikt ID</td>
   </tr>
 </table>
 
