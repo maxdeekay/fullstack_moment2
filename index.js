@@ -1,13 +1,21 @@
+require("dotenv").config();
 const Koa = require("koa");
 const Router = require("koa-router");
 const bodyParser = require("koa-bodyparser");
-const Database = require("better-sqlite3");
+const { Pool } = require("pg");
 
 const app = new Koa();
 const router = new Router();
-const db = new Database("./database.db");
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+
+const pool = new Pool({
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASSWORD,
+    port: process.env.DB_PORT
+});
 
 // middleware to parse JSON
 app.use(bodyParser());
@@ -15,18 +23,34 @@ app.use(bodyParser());
 // routes
 // get all movies
 router.get("/movies", async (ctx) => {
-    const movies = db.prepare("SELECT * FROM movies").all();
-    ctx.body = movies;
+    try {
+        const result = await pool.query("SELECT * FROM movies");
+        ctx.body = result.rows;
+    } catch (error) {
+        console.error(error);
+        ctx.status = 500;
+        ctx.body = { error: "Internal server error" };
+    }
 });
 
 // get a single movie by id
 router.get("/movies/:id", async (ctx) => {
-    const movie = db.prepare("SELECT * FROM movies WHERE id = ?").get(ctx.params.id);
-    if (movie) {
-        ctx.body = movie;
-    } else {
-        ctx.status = 400;
-        ctx.body = { error: "Movie not found" };
+    try {
+        const movie = await pool.query(
+            "SELECT * FROM movies WHERE id = $1", [ctx.params.id]
+        );
+
+        if (movie.rows.length > 0) {
+            ctx.status = 200;
+            ctx.body = movie.rows[0];
+        } else {
+            ctx.status = 404 ;
+            ctx.body = { error: "Movie not found" };
+        }
+    } catch (error) {
+        console.error(error);
+        ctx.status = 500;
+        ctx.body = { error: "Internal server error" };
     }
 }); 
 
@@ -42,15 +66,18 @@ router.post("/movies", async (ctx) => {
         return;
     }
 
-    // convert JavaScript boolean to integer for SQLite
-    const seenInt = seen ? 1 : 0;
-
-    // prepare and run the SQL-statement
-    const stmt = db.prepare("INSERT INTO movies (name, year, seen) VALUES (?, ?, ?)");
-    const result = stmt.run(name, year, seenInt);
-
-    ctx.status = 201;
-    ctx.body = { id: result.lastInsertRowid, name, year, seen };
+    try {
+        const result = await pool.query(
+            "INSERT INTO movies (name, year, seen) VALUES ($1, $2, $3) RETURNING *",
+            [name, year, seen]
+        );
+        ctx.status = 201;
+        ctx.body = result.rows[0];
+    } catch (error) {
+        console.error(error);
+        ctx.status = 500;
+        ctx.body = { error: "Internal server error" };
+    }
 });
 
 // update a movie
@@ -65,32 +92,44 @@ router.put("/movies/:id", async (ctx) => {
         return;
     }
 
-    // convert JavaScript boolean to integer for SQLite
-    const seenInt = seen ? 1 : 0;
-
-    const stmt = db.prepare("UPDATE movies SET name = ?, year = ?, seen = ? WHERE id = ?");
-    const result = stmt.run(name, year, seenInt, ctx.params.id);
-
-    if (result.changes === 0) {
-        ctx.status = 404;
-        ctx.body = { error: "Movie not found or no changes made" };
-    } else {
-        ctx.status = 200;
-        ctx.body = { message: "Movie updated successfully" } ;
+    try {
+        const result = await pool.query(
+            "UPDATE movies SET name = $1, year = $2, seen = $3 WHERE id = $4",
+            [name, year, seen, ctx.params.id]
+        );
+    
+        if (result.rowCount === 0) {
+            ctx.status = 404;
+            ctx.body = { error: "Movie not found or no changes made" };
+        } else {
+            ctx.status = 200;
+            ctx.body = { message: "Movie updated successfully" };
+        }
+    } catch (error) {
+        console.error(error);
+        ctx.status = 500;
+        ctx.body = { error: "Internal server error" };
     }
 });
 
 // delete a movie
 router.delete("/movies/:id", async (ctx) => {
-    const stmt = db.prepare("DELETE FROM movies WHERE id = ?");
-    const result = stmt.run(ctx.params.id);
-
-    if (result.changes === 0) {
-        ctx.status = 404;
-        ctx.body = { error: "Movie not found" };
-    } else {
-        ctx.status = 200;
-        ctx.body = { message: "Movie deleted successfully" };
+    try {
+        const result = await pool.query(
+            "DELETE FROM movies WHERE id = $1", [ctx.params.id]
+        );
+    
+        if (result.rowCount === 0) {
+            ctx.status = 404;
+            ctx.body = { error: "Movie not found" };
+        } else {
+            ctx.status = 200;
+            ctx.body = { message: "Movie deleted successfully" };
+        }
+    } catch (error) {
+        console.error(error);
+        ctx.status = 500;
+        ctx.body = { error: "Internal server error" };
     }
 });
 
