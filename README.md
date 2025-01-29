@@ -1,7 +1,8 @@
 <h1>REST API skapat för moment 2 i kursen Fullstack-utveckling (DT193G)</h1>
 Detta repository innehåller ett enklare REST API för att sköta lagring och hantering av filmer som användaren sett.
+Databasen som används är PostgreSQL och hostas på <a href="https://supabase.com/">https://supabase.com/</a>.
 
-APIet finns publicerat på följande länk: ...
+APIet finns publicerat på följande länk: <a href="https://moment2-fulllstack.onrender.com/">https://moment2-fulllstack.onrender.com/</a>.
 
 <h2>Användning</h2>
 Nedan följer hur man kan använda sig av APIet:
