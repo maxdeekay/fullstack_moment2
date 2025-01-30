@@ -2,6 +2,7 @@ require("dotenv").config();
 const Koa = require("koa");
 const Router = require("koa-router");
 const bodyParser = require("koa-bodyparser");
+const cors = require("@koa/cors");
 const { Pool } = require("pg");
 
 const app = new Koa();
@@ -19,6 +20,9 @@ const pool = new Pool({
 
 // middleware to parse JSON
 app.use(bodyParser());
+
+// enable CORS
+app.use(cors());
 
 // routes
 // get all movies
